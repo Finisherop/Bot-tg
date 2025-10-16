@@ -1,164 +1,149 @@
 <!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Referral Dashboard</title>
-    <script type="module">
-      // ==========================
-      // 🔥 Firebase Configuration
-      // ==========================
-      import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-app.js";
-      import {
-        getDatabase,
-        ref,
-        onValue,
-      } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-database.js";
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Referral Dashboard</title>
+  <script type="module">
+    // =============================
+    // 🔹 1️⃣ IMPORTS
+    // =============================
+    import { initializeApp, getApps } from "https://www.gstatic.com/firebasejs/10.13.1/firebase-app.js";
+    import { getDatabase, ref, get, set, update } from "https://www.gstatic.com/firebasejs/10.13.1/firebase-database.js";
 
-      const firebaseConfig = {
-        apiKey: "AIzaSyC_SO0ZnItNVoWif48MyMeznuLsA-jq52k",
-        authDomain: "tgfjf-9f690.firebaseapp.com",
-        databaseURL: "https://tgfjf-5bbfe-default-rtdb.firebaseio.com",
-        projectId: "tgfjf-9f690",
-        storageBucket: "tgfjf-9f690.appspot.com",
-        messagingSenderId: "63734032391",
-        appId: "1:63734032391:web:b35616ee989e6cb6d2d715",
-      };
+    // =============================
+    // 🔹 2️⃣ FIREBASE CONFIG
+    // =============================
+    const firebaseConfig = {
+      apiKey: "AIzaSyC_SO0ZnItNVoWif48MyMeznuLsA-jq52k",
+      authDomain: "tgfjf-9f690.firebaseapp.com",
+      databaseURL: "https://tgfjf-9f690-default-rtdb.asia-southeast1.firebasedatabase.app/",
+      projectId: "tgfjf-9f690",
+      storageBucket: "tgfjf-9f690.appspot.com",
+      messagingSenderId: "191397310849",
+      appId: "1:191397310849:web:dc6a2d524e38a5679df94d"
+    };
 
-      const app = initializeApp(firebaseConfig);
-      const db = getDatabase(app);
+    const app = getApps().length ? getApps()[0] : initializeApp(firebaseConfig);
+    const db = getDatabase(app, firebaseConfig.databaseURL);
 
-      // ==========================
-      // 🌐 URL Parameter Parsing
-      // ==========================
-      const urlParams = new URLSearchParams(window.location.search);
-      const userId = urlParams.get("id") || "6779644494"; // default for testing
-      console.log("[Dashboard] Checking user:", userId);
+    // =============================
+    // 🔹 3️⃣ TELEGRAM INIT
+    // =============================
+    let tg, user;
 
-      const userRef = ref(db, `telegram_users/${userId}`);
+    document.addEventListener("DOMContentLoaded", async () => {
+      tg = window.Telegram?.WebApp;
 
-      const userCard = document.getElementById("user-card");
-      const loading = document.getElementById("loading");
-      const notFound = document.getElementById("not-found");
+      if (tg && tg.initDataUnsafe?.user) {
+        user = tg.initDataUnsafe.user;
+        console.log("✅ Telegram WebApp connected:", user);
+        document.getElementById("username").textContent = `@${user.username || "Unknown"}`;
+        document.getElementById("userid").textContent = user.id;
+        await loadUserData(user.id);
+      } else {
+        console.warn("⚠️ Telegram WebApp not detected. Using fallback user...");
+        // fallback testing data
+        user = { id: "6779644494", username: "Khans" };
+        document.getElementById("username").textContent = `@${user.username}`;
+        document.getElementById("userid").textContent = user.id;
+        await loadUserData(user.id);
+      }
+    });
 
-      // ==========================
-      // 📡 Realtime Fetch
-      // ==========================
-      onValue(userRef, (snapshot) => {
-        loading.style.display = "none";
+    // =============================
+    // 🔹 4️⃣ LOAD USER DATA
+    // =============================
+    async function loadUserData(userId) {
+      try {
+        console.log("[Dashboard] Checking user:", userId);
+
+        const snapshot = await get(ref(db, `telegram_users/${userId}`));
         if (!snapshot.exists()) {
-          notFound.style.display = "block";
+          document.getElementById("status").textContent = "❌ User not found in Firebase.";
           return;
         }
 
         const data = snapshot.val();
-        userCard.style.display = "block";
-        document.getElementById("username").textContent = data.username || "Unknown";
-        animateCount("coins", data.coins || 0);
-        animateCount("referrals", data.referrals || 0);
-      });
+        console.log("✅ User data:", data);
 
-      // ==========================
-      // 🔢 Counter Animation
-      // ==========================
-      function animateCount(id, target) {
-        const el = document.getElementById(id);
-        let count = 0;
-        const step = target / 40;
-        const interval = setInterval(() => {
-          count += step;
-          if (count >= target) {
-            clearInterval(interval);
-            count = target;
-          }
-          el.textContent = Math.floor(count);
-        }, 25);
+        document.getElementById("coins").textContent = data.coins ?? 0;
+        document.getElementById("referrals").textContent = data.referrals ?? 0;
+        document.getElementById("status").textContent = data.referralStatus || "pending";
+      } catch (error) {
+        console.error("🔥 Error fetching data:", error);
+        document.getElementById("status").textContent = "⚠️ Error fetching data.";
       }
-    </script>
+    }
 
-    <style>
-      body {
-        margin: 0;
-        font-family: "Poppins", sans-serif;
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        height: 100vh;
-        background: linear-gradient(135deg, #1d2671, #c33764);
-        color: white;
+    // =============================
+    // 🔹 5️⃣ CONFIRM REFERRAL BUTTON
+    // =============================
+    async function confirmReferral() {
+      try {
+        const userRef = ref(db, `telegram_users/${user.id}`);
+        await update(userRef, { referralStatus: "confirmed" });
+        document.getElementById("status").textContent = "✅ Referral confirmed!";
+        console.log("Referral confirmed for", user.id);
+      } catch (error) {
+        console.error("🔥 Error confirming referral:", error);
+        document.getElementById("status").textContent = "❌ Failed to confirm referral.";
       }
+    }
 
-      .card {
-        background: rgba(255, 255, 255, 0.1);
-        border-radius: 20px;
-        padding: 30px;
-        text-align: center;
-        width: 90%;
-        max-width: 380px;
-        box-shadow: 0 0 20px rgba(0, 0, 0, 0.4);
-      }
+    window.confirmReferral = confirmReferral;
+  </script>
 
-      h2 {
-        margin: 0 0 10px;
-        font-weight: 600;
-        font-size: 1.6rem;
-      }
+  <style>
+    body {
+      font-family: "Poppins", sans-serif;
+      background: linear-gradient(135deg, #10131a, #1a2235);
+      color: white;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+      margin: 0;
+      padding: 20px;
+    }
+    .card {
+      background: rgba(255, 255, 255, 0.08);
+      border-radius: 20px;
+      padding: 25px;
+      width: 320px;
+      text-align: center;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+      backdrop-filter: blur(10px);
+    }
+    button {
+      background: #1c8ef9;
+      color: white;
+      border: none;
+      border-radius: 10px;
+      padding: 12px 20px;
+      margin-top: 15px;
+      cursor: pointer;
+      font-size: 15px;
+      transition: all 0.3s ease;
+    }
+    button:hover {
+      background: #0067d3;
+    }
+    h1 { font-size: 22px; }
+    p { margin: 6px 0; }
+  </style>
+</head>
 
-      .stats {
-        display: flex;
-        justify-content: space-around;
-        margin-top: 25px;
-      }
-
-      .stat {
-        text-align: center;
-      }
-
-      .stat h3 {
-        font-size: 2rem;
-        margin: 5px 0;
-      }
-
-      #loading {
-        font-size: 1.2rem;
-        animation: blink 1.2s infinite;
-      }
-
-      @keyframes blink {
-        50% {
-          opacity: 0.5;
-        }
-      }
-
-      #not-found {
-        display: none;
-        color: #ffbaba;
-        font-size: 1rem;
-      }
-
-      #user-card {
-        display: none;
-      }
-    </style>
-  </head>
-
-  <body>
-    <div id="loading">Loading user data...</div>
-
-    <div id="not-found">⚠️ User not found in Firebase!</div>
-
-    <div id="user-card" class="card">
-      <h2 id="username">User</h2>
-      <div class="stats">
-        <div class="stat">
-          <h3 id="coins">0</h3>
-          <p>Coins</p>
-        </div>
-        <div class="stat">
-          <h3 id="referrals">0</h3>
-          <p>Referrals</p>
-        </div>
-      </div>
-    </div>
-  </body>
+<body>
+  <div class="card">
+    <h1>💎 Referral Dashboard</h1>
+    <p><b>Username:</b> <span id="username">Loading...</span></p>
+    <p><b>User ID:</b> <span id="userid">...</span></p>
+    <p><b>Coins:</b> <span id="coins">0</span></p>
+    <p><b>Referrals:</b> <span id="referrals">0</span></p>
+    <p><b>Status:</b> <span id="status">Loading...</span></p>
+    <button onclick="confirmReferral()">✅ Confirm Referral</button>
+  </div>
+</body>
 </html>
