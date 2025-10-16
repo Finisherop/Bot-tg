@@ -1,149 +1,124 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Referral Dashboard</title>
-  <script type="module">
-    // =============================
-    // 🔹 1️⃣ IMPORTS
-    // =============================
-    import { initializeApp, getApps } from "https://www.gstatic.com/firebasejs/10.13.1/firebase-app.js";
-    import { getDatabase, ref, get, set, update } from "https://www.gstatic.com/firebasejs/10.13.1/firebase-database.js";
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Referral Dashboard</title>
 
-    // =============================
-    // 🔹 2️⃣ FIREBASE CONFIG
-    // =============================
-    const firebaseConfig = {
-      apiKey: "AIzaSyC_SO0ZnItNVoWif48MyMeznuLsA-jq52k",
-      authDomain: "tgfjf-9f690.firebaseapp.com",
-      databaseURL: "https://tgfjf-5bbfe-default-rtdb.firebaseio.com",
-      projectId: "tgfjf-9f690",
-      storageBucket: "tgfjf-9f690.appspot.com",
-      messagingSenderId: "191397310849",
-      appId: "1:191397310849:web:dc6a2d524e38a5679df94d"
-    };
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <script type="module">
+      import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
+      import {
+        getDatabase,
+        ref,
+        get,
+      } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-database.js";
 
-    const app = getApps().length ? getApps()[0] : initializeApp(firebaseConfig);
-    const db = getDatabase(app, firebaseConfig.databaseURL);
+      // ============================
+      // 🔥 Firebase Configuration
+      // ============================
+      const firebaseConfig = {
+        apiKey: "AIzaSyC_SO0ZnItNVoWif48MyMeznuLsA-jq52k",
+        authDomain: "tgfjf-9f690.firebaseapp.com",
+        databaseURL:    "https://tgfjf-5bbfe-default-rtdb.firebaseio.com",
+        projectId: "tgfjf-9f690",
+        storageBucket: "tgfjf-9f690.appspot.com",
+        messagingSenderId: "431271375984",
+        appId: "1:431271375984:web:c206d5a8a3fd7e3286d07a",
+      };
 
-    // =============================
-    // 🔹 3️⃣ TELEGRAM INIT
-    // =============================
-    let tg, user;
+      const app = initializeApp(firebaseConfig);
+      const db = getDatabase(app);
 
-    document.addEventListener("DOMContentLoaded", async () => {
-      tg = window.Telegram?.WebApp;
+      // ============================
+      // 🧠 User Detection
+      // ============================
+      let tg = window.Telegram.WebApp;
+      let userId =
+        tg.initDataUnsafe?.user?.id ||
+        new URLSearchParams(window.location.search).get("userId") ||
+        null;
 
-      if (tg && tg.initDataUnsafe?.user) {
-        user = tg.initDataUnsafe.user;
-        console.log("✅ Telegram WebApp connected:", user);
-        document.getElementById("username").textContent = `@${user.username || "Unknown"}`;
-        document.getElementById("userid").textContent = user.id;
-        await loadUserData(user.id);
-      } else {
-        console.warn("⚠️ Telegram WebApp not detected. Using fallback user...");
-        // fallback testing data
-        user = { id: "6779644494", username: "Khans" };
-        document.getElementById("username").textContent = `@${user.username}`;
-        document.getElementById("userid").textContent = user.id;
-        await loadUserData(user.id);
+      if (!userId) {
+        document.getElementById("app").innerHTML =
+          "<h3 style='color:red'>⚠️ User not found. Open from Telegram!</h3>";
+        throw new Error("User not found");
       }
-    });
 
-    // =============================
-    // 🔹 4️⃣ LOAD USER DATA
-    // =============================
-    async function loadUserData(userId) {
-      try {
-        console.log("[Dashboard] Checking user:", userId);
+      console.log("[Dashboard] Checking user:", userId);
 
-        const snapshot = await get(ref(db, `telegram_users/${userId}`));
-        if (!snapshot.exists()) {
-          document.getElementById("status").textContent = "❌ User not found in Firebase.";
+      // ============================
+      // 📡 Fetch User Data
+      // ============================
+      async function loadUser() {
+        const userRef = ref(db, `telegram_users/${userId}`);
+        const snap = await get(userRef);
+
+        if (!snap.exists()) {
+          document.getElementById("app").innerHTML =
+            "<h3>❌ User not registered yet</h3>";
           return;
         }
 
-        const data = snapshot.val();
-        console.log("✅ User data:", data);
+        const user = snap.val();
+        document.getElementById("username").innerText = user.username || "Unknown";
+        document.getElementById("coins").innerText = user.coins || 0;
+        document.getElementById("referrals").innerText = user.referrals || 0;
+        document.getElementById("status").innerText =
+          user.referralStatus || "none";
+        document.getElementById("referredBy").innerText =
+          user.referredBy || "none";
 
-        document.getElementById("coins").textContent = data.coins ?? 0;
-        document.getElementById("referrals").textContent = data.referrals ?? 0;
-        document.getElementById("status").textContent = data.referralStatus || "pending";
-      } catch (error) {
-        console.error("🔥 Error fetching data:", error);
-        document.getElementById("status").textContent = "⚠️ Error fetching data.";
+        // Auto-confirm referral if pending
+        if (user.referralStatus === "pending") {
+          await fetch("/confirm-referral", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ userId }),
+          });
+          document.getElementById("status").innerText = "confirmed ✅";
+        }
       }
-    }
 
-    // =============================
-    // 🔹 5️⃣ CONFIRM REFERRAL BUTTON
-    // =============================
-    async function confirmReferral() {
-      try {
-        const userRef = ref(db, `telegram_users/${user.id}`);
-        await update(userRef, { referralStatus: "confirmed" });
-        document.getElementById("status").textContent = "✅ Referral confirmed!";
-        console.log("Referral confirmed for", user.id);
-      } catch (error) {
-        console.error("🔥 Error confirming referral:", error);
-        document.getElementById("status").textContent = "❌ Failed to confirm referral.";
+      loadUser();
+    </script>
+
+    <style>
+      body {
+        background: #0e0e0e;
+        color: #fff;
+        font-family: "Poppins", sans-serif;
+        text-align: center;
+        margin: 0;
+        padding: 40px;
       }
-    }
+      .card {
+        background: #1a1a1a;
+        border-radius: 16px;
+        padding: 20px;
+        box-shadow: 0 0 12px #333;
+        max-width: 400px;
+        margin: auto;
+      }
+      h2 {
+        color: #00ffc3;
+      }
+      .stat {
+        margin: 10px 0;
+        font-size: 1.1em;
+      }
+    </style>
+  </head>
 
-    window.confirmReferral = confirmReferral;
-  </script>
-
-  <style>
-    body {
-      font-family: "Poppins", sans-serif;
-      background: linear-gradient(135deg, #10131a, #1a2235);
-      color: white;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      height: 100vh;
-      margin: 0;
-      padding: 20px;
-    }
-    .card {
-      background: rgba(255, 255, 255, 0.08);
-      border-radius: 20px;
-      padding: 25px;
-      width: 320px;
-      text-align: center;
-      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
-      backdrop-filter: blur(10px);
-    }
-    button {
-      background: #1c8ef9;
-      color: white;
-      border: none;
-      border-radius: 10px;
-      padding: 12px 20px;
-      margin-top: 15px;
-      cursor: pointer;
-      font-size: 15px;
-      transition: all 0.3s ease;
-    }
-    button:hover {
-      background: #0067d3;
-    }
-    h1 { font-size: 22px; }
-    p { margin: 6px 0; }
-  </style>
-</head>
-
-<body>
-  <div class="card">
-    <h1>💎 Referral Dashboard</h1>
-    <p><b>Username:</b> <span id="username">Loading...</span></p>
-    <p><b>User ID:</b> <span id="userid">...</span></p>
-    <p><b>Coins:</b> <span id="coins">0</span></p>
-    <p><b>Referrals:</b> <span id="referrals">0</span></p>
-    <p><b>Status:</b> <span id="status">Loading...</span></p>
-    <button onclick="confirmReferral()">✅ Confirm Referral</button>
-  </div>
-</body>
+  <body>
+    <div id="app">
+      <div class="card">
+        <h2>👋 Welcome, <span id="username">Loading...</span></h2>
+        <p class="stat">💰 Coins: <b id="coins">0</b></p>
+        <p class="stat">👥 Referrals: <b id="referrals">0</b></p>
+        <p class="stat">📜 Status: <b id="status">none</b></p>
+        <p class="stat">🔗 Referred By: <b id="referredBy">none</b></p>
+      </div>
+    </div>
+  </body>
 </html>
