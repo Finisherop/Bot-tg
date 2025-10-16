@@ -5,171 +5,160 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Referral Dashboard</title>
     <script type="module">
-      // =========================
-      // 1️⃣ Firebase Setup
-      // =========================
-      import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
+      // ==========================
+      // 🔥 Firebase Configuration
+      // ==========================
+      import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-app.js";
       import {
         getDatabase,
         ref,
         onValue,
-        get,
-      } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-database.js";
+      } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-database.js";
 
       const firebaseConfig = {
         apiKey: "AIzaSyC_SO0ZnItNVoWif48MyMeznuLsA-jq52k",
-        authDomain: "tgfjf-5bbfe.firebaseapp.com",
-        databaseURL: "https://tgfjf-5bbfe-default-rtdb.firebaseio.com",
-        projectId: "tgfjf-5bbfe",
-        storageBucket: "tgfjf-5bbfe.firebasestorage.app",
-        messagingSenderId: "898327972915",
-        appId: "1:898327972915:web:8450b0cfdf69134474e746",
+        authDomain: "tgfjf-9f690.firebaseapp.com",
+        databaseURL: "https://tgfjf-9f690-default-rtdb.firebaseio.com",
+        projectId: "tgfjf-9f690",
+        storageBucket: "tgfjf-9f690.appspot.com",
+        messagingSenderId: "63734032391",
+        appId: "1:63734032391:web:b35616ee989e6cb6d2d715",
       };
 
       const app = initializeApp(firebaseConfig);
       const db = getDatabase(app);
 
-      // =========================
-      // 2️⃣ Fetch User Data
-      // =========================
-      async function fetchUserData(userId) {
-        try {
-          const userRef = ref(db, `telegram_users/${userId}`);
-          const snap = await get(userRef);
-          if (snap.exists()) {
-            const data = snap.val();
-            renderDashboard(data);
-          } else {
-            document.querySelector("#content").innerHTML =
-              "<p class='error'>User not found 😕</p>";
-          }
-
-          // 🔁 Realtime updates
-          onValue(userRef, (snapshot) => {
-            if (snapshot.exists()) {
-              renderDashboard(snapshot.val());
-            }
-          });
-        } catch (err) {
-          console.error("Error fetching data:", err);
-          document.querySelector("#content").innerHTML =
-            "<p class='error'>Failed to fetch data ❌</p>";
-        }
-      }
-
-      // =========================
-      // 3️⃣ Render UI
-      // =========================
-      function renderDashboard(data) {
-        const { username, coins, referrals, referralStatus, referredBy } = data;
-        document.querySelector("#content").innerHTML = `
-          <div class="card">
-            <h2>👋 Hey, ${username || "User"}</h2>
-            <div class="stats">
-              <div class="stat">
-                <h3>${coins || 0}</h3>
-                <p>Coins</p>
-              </div>
-              <div class="stat">
-                <h3>${referrals || 0}</h3>
-                <p>Referrals</p>
-              </div>
-            </div>
-            <div class="details">
-              <p><b>Status:</b> ${
-                referralStatus || "—"
-              }</p>
-              <p><b>Referred By:</b> ${referredBy || "—"}</p>
-            </div>
-            <button id="shareBtn">📤 Share Referral Link</button>
-          </div>
-        `;
-
-        const shareBtn = document.getElementById("shareBtn");
-        shareBtn.addEventListener("click", () => {
-          const link = `https://t.me/Wiwiwjwjisjs_bot?start=ref${data.userId}`;
-          navigator.clipboard.writeText(link);
-          shareBtn.innerText = "✅ Copied!";
-          setTimeout(() => (shareBtn.innerText = "📤 Share Referral Link"), 2000);
-        });
-      }
-
-      // =========================
-      // 4️⃣ Start Logic
-      // =========================
+      // ==========================
+      // 🌐 URL Parameter Parsing
+      // ==========================
       const urlParams = new URLSearchParams(window.location.search);
-      const userId = urlParams.get("id") || "6779644494"; // Default for testing
-      fetchUserData(userId);
+      const userId = urlParams.get("id") || "6779644494"; // default for testing
+      console.log("[Dashboard] Checking user:", userId);
+
+      const userRef = ref(db, `telegram_users/${userId}`);
+
+      const userCard = document.getElementById("user-card");
+      const loading = document.getElementById("loading");
+      const notFound = document.getElementById("not-found");
+
+      // ==========================
+      // 📡 Realtime Fetch
+      // ==========================
+      onValue(userRef, (snapshot) => {
+        loading.style.display = "none";
+        if (!snapshot.exists()) {
+          notFound.style.display = "block";
+          return;
+        }
+
+        const data = snapshot.val();
+        userCard.style.display = "block";
+        document.getElementById("username").textContent = data.username || "Unknown";
+        animateCount("coins", data.coins || 0);
+        animateCount("referrals", data.referrals || 0);
+      });
+
+      // ==========================
+      // 🔢 Counter Animation
+      // ==========================
+      function animateCount(id, target) {
+        const el = document.getElementById(id);
+        let count = 0;
+        const step = target / 40;
+        const interval = setInterval(() => {
+          count += step;
+          if (count >= target) {
+            clearInterval(interval);
+            count = target;
+          }
+          el.textContent = Math.floor(count);
+        }, 25);
+      }
     </script>
 
     <style>
-      @import url("https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap");
       body {
-        font-family: "Poppins", sans-serif;
-        background: radial-gradient(circle at top left, #0f2027, #203a43, #2c5364);
-        color: white;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        height: 100vh;
         margin: 0;
+        font-family: "Poppins", sans-serif;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        height: 100vh;
+        background: linear-gradient(135deg, #1d2671, #c33764);
+        color: white;
       }
+
       .card {
-        background: rgba(255, 255, 255, 0.08);
-        backdrop-filter: blur(15px);
+        background: rgba(255, 255, 255, 0.1);
         border-radius: 20px;
-        padding: 25px;
-        width: 320px;
+        padding: 30px;
         text-align: center;
-        box-shadow: 0 0 15px rgba(0, 0, 0, 0.2);
+        width: 90%;
+        max-width: 380px;
+        box-shadow: 0 0 20px rgba(0, 0, 0, 0.4);
       }
+
       h2 {
-        font-size: 1.4rem;
-        margin-bottom: 15px;
+        margin: 0 0 10px;
+        font-weight: 600;
+        font-size: 1.6rem;
       }
+
       .stats {
         display: flex;
         justify-content: space-around;
-        margin: 20px 0;
+        margin-top: 25px;
       }
-      .stat h3 {
-        font-size: 1.6rem;
-        margin: 0;
-      }
-      .stat p {
-        margin: 5px 0 0;
-        color: #ddd;
-      }
-      .details {
-        font-size: 0.9rem;
-        text-align: left;
-        margin-top: 15px;
-      }
-      button {
-        margin-top: 20px;
-        background: linear-gradient(135deg, #00c6ff, #0072ff);
-        border: none;
-        padding: 12px 20px;
-        color: white;
-        font-weight: 600;
-        border-radius: 10px;
-        cursor: pointer;
-        transition: 0.3s;
-        width: 100%;
-      }
-      button:hover {
-        transform: scale(1.05);
-      }
-      .error {
-        color: #ff6b6b;
+
+      .stat {
         text-align: center;
+      }
+
+      .stat h3 {
+        font-size: 2rem;
+        margin: 5px 0;
+      }
+
+      #loading {
+        font-size: 1.2rem;
+        animation: blink 1.2s infinite;
+      }
+
+      @keyframes blink {
+        50% {
+          opacity: 0.5;
+        }
+      }
+
+      #not-found {
+        display: none;
+        color: #ffbaba;
+        font-size: 1rem;
+      }
+
+      #user-card {
+        display: none;
       }
     </style>
   </head>
 
   <body>
-    <div id="content">
-      <p>Loading your dashboard...</p>
+    <div id="loading">Loading user data...</div>
+
+    <div id="not-found">⚠️ User not found in Firebase!</div>
+
+    <div id="user-card" class="card">
+      <h2 id="username">User</h2>
+      <div class="stats">
+        <div class="stat">
+          <h3 id="coins">0</h3>
+          <p>Coins</p>
+        </div>
+        <div class="stat">
+          <h3 id="referrals">0</h3>
+          <p>Referrals</p>
+        </div>
+      </div>
     </div>
   </body>
 </html>
