@@ -1,152 +1,178 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>RichAirDrop - Earn SHIB Daily</title>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-auth-compat.js"></script>
-    <script src="https://telegram.org/js/telegram-web-app.js"></script>
-    <!-- Ad SDKs -->
-    <script src='//libtl.com/sdk.js' data-zone='10005454' data-sdk='show_10005454'></script>
-    <script src="https://ad.gigapub.tech/script?id=3539"></script>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Referral Dashboard</title>
+    <script type="module">
+      // =========================
+      // 1️⃣ Firebase Setup
+      // =========================
+      import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
+      import {
+        getDatabase,
+        ref,
+        onValue,
+        get,
+      } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-database.js";
+
+      const firebaseConfig = {
+        apiKey: "AIzaSyC_SO0ZnItNVoWif48MyMeznuLsA-jq52k",
+        authDomain: "tgfjf-5bbfe.firebaseapp.com",
+        databaseURL: "https://tgfjf-5bbfe-default-rtdb.firebaseio.com",
+        projectId: "tgfjf-5bbfe",
+        storageBucket: "tgfjf-5bbfe.firebasestorage.app",
+        messagingSenderId: "898327972915",
+        appId: "1:898327972915:web:8450b0cfdf69134474e746",
+      };
+
+      const app = initializeApp(firebaseConfig);
+      const db = getDatabase(app);
+
+      // =========================
+      // 2️⃣ Fetch User Data
+      // =========================
+      async function fetchUserData(userId) {
+        try {
+          const userRef = ref(db, `telegram_users/${userId}`);
+          const snap = await get(userRef);
+          if (snap.exists()) {
+            const data = snap.val();
+            renderDashboard(data);
+          } else {
+            document.querySelector("#content").innerHTML =
+              "<p class='error'>User not found 😕</p>";
+          }
+
+          // 🔁 Realtime updates
+          onValue(userRef, (snapshot) => {
+            if (snapshot.exists()) {
+              renderDashboard(snapshot.val());
+            }
+          });
+        } catch (err) {
+          console.error("Error fetching data:", err);
+          document.querySelector("#content").innerHTML =
+            "<p class='error'>Failed to fetch data ❌</p>";
+        }
+      }
+
+      // =========================
+      // 3️⃣ Render UI
+      // =========================
+      function renderDashboard(data) {
+        const { username, coins, referrals, referralStatus, referredBy } = data;
+        document.querySelector("#content").innerHTML = `
+          <div class="card">
+            <h2>👋 Hey, ${username || "User"}</h2>
+            <div class="stats">
+              <div class="stat">
+                <h3>${coins || 0}</h3>
+                <p>Coins</p>
+              </div>
+              <div class="stat">
+                <h3>${referrals || 0}</h3>
+                <p>Referrals</p>
+              </div>
+            </div>
+            <div class="details">
+              <p><b>Status:</b> ${
+                referralStatus || "—"
+              }</p>
+              <p><b>Referred By:</b> ${referredBy || "—"}</p>
+            </div>
+            <button id="shareBtn">📤 Share Referral Link</button>
+          </div>
+        `;
+
+        const shareBtn = document.getElementById("shareBtn");
+        shareBtn.addEventListener("click", () => {
+          const link = `https://t.me/Wiwiwjwjisjs_bot?start=ref${data.userId}`;
+          navigator.clipboard.writeText(link);
+          shareBtn.innerText = "✅ Copied!";
+          setTimeout(() => (shareBtn.innerText = "📤 Share Referral Link"), 2000);
+        });
+      }
+
+      // =========================
+      // 4️⃣ Start Logic
+      // =========================
+      const urlParams = new URLSearchParams(window.location.search);
+      const userId = urlParams.get("id") || "6779644494"; // Default for testing
+      fetchUserData(userId);
+    </script>
+
     <style>
-        :root {
-            --primary-bg: #1a1a2e;
-            --card-bg: #16213e;
-            --accent: #0f3460;
-            --highlight: #e94560;
-            --text: #ffffff;
-            --text-secondary: #b0b0b0;
-            --border: #2a2a4a;
-            --success: #4CAF50;
-            --warning: #FF9800;
-            --danger: #F44336;
-            --shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
-            --transition: all 0.3s ease;
-        }
+      @import url("https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap");
+      body {
+        font-family: "Poppins", sans-serif;
+        background: radial-gradient(circle at top left, #0f2027, #203a43, #2c5364);
+        color: white;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        height: 100vh;
+        margin: 0;
+      }
+      .card {
+        background: rgba(255, 255, 255, 0.08);
+        backdrop-filter: blur(15px);
+        border-radius: 20px;
+        padding: 25px;
+        width: 320px;
+        text-align: center;
+        box-shadow: 0 0 15px rgba(0, 0, 0, 0.2);
+      }
+      h2 {
+        font-size: 1.4rem;
+        margin-bottom: 15px;
+      }
+      .stats {
+        display: flex;
+        justify-content: space-around;
+        margin: 20px 0;
+      }
+      .stat h3 {
+        font-size: 1.6rem;
+        margin: 0;
+      }
+      .stat p {
+        margin: 5px 0 0;
+        color: #ddd;
+      }
+      .details {
+        font-size: 0.9rem;
+        text-align: left;
+        margin-top: 15px;
+      }
+      button {
+        margin-top: 20px;
+        background: linear-gradient(135deg, #00c6ff, #0072ff);
+        border: none;
+        padding: 12px 20px;
+        color: white;
+        font-weight: 600;
+        border-radius: 10px;
+        cursor: pointer;
+        transition: 0.3s;
+        width: 100%;
+      }
+      button:hover {
+        transform: scale(1.05);
+      }
+      .error {
+        color: #ff6b6b;
+        text-align: center;
+      }
+    </style>
+  </head>
 
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-            font-family: 'Poppins', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            -webkit-tap-highlight-color: transparent;
-            -webkit-touch-callout: none;
-            -webkit-user-select: none;
-            -moz-user-select: none;
-            -ms-user-select: none;
-            user-select: none;
-        }
-
-        body {
-            background-color: var(--primary-bg);
-            color: var(--text);
-            min-height: 100vh;
-            padding-bottom: 80px;
-            background-image: 
-                radial-gradient(circle at 10% 20%, rgba(233, 69, 96, 0.1) 0%, transparent 20%),
-                radial-gradient(circle at 90% 80%, rgba(15, 52, 96, 0.1) 0%, transparent 20%);
-            touch-action: pan-y;
-            overflow-x: hidden;
-        }
-
-        .container {
-            max-width: 600px;
-            margin: 0 auto;
-            padding: 15px;
-        }
-
-        /* Header Styles */
-        .header {
-            background: linear-gradient(135deg, var(--accent), var(--highlight));
-            padding: 25px;
-            border-radius: 20px;
-            margin-bottom: 25px;
-            text-align: center;
-            box-shadow: var(--shadow);
-            position: relative;
-            overflow: hidden;
-            animation: fadeInDown 0.8s ease;
-        }
-
-        .header::before {
-            content: '';
-            position: absolute;
-            top: -50%;
-            left: -50%;
-            width: 200%;
-            height: 200%;
-            background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 70%);
-            animation: rotate 20s linear infinite;
-        }
-
-        .logo {
-            font-size: 28px;
-            font-weight: 800;
-            margin-bottom: 5px;
-            position: relative;
-            text-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
-            letter-spacing: 0.5px;
-        }
-
-        .tagline {
-            font-size: 16px;
-            opacity: 0.9;
-            position: relative;
-            font-weight: 300;
-            letter-spacing: 0.3px;
-        }
-
-        /* User Profile - Updated to match second image */
-        .user-profile {
-            display: flex;
-            align-items: center;
-            background-color: var(--card-bg);
-            padding: 20px;
-            border-radius: 16px;
-            margin-bottom: 25px;
-            box-shadow: var(--shadow);
-            animation: fadeIn 0.8s ease;
-            transition: var(--transition);
-            border: 1px solid rgba(255, 255, 255, 0.05);
-        }
-
-        .user-profile:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 12px 40px rgba(0, 0, 0, 0.4);
-        }
-
-        .avatar {
-            width: 55px;
-            height: 55px;
-            border-radius: 50%;
-            background: linear-gradient(135deg, var(--accent), var(--highlight));
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 22px;
-            margin-right: 15px;
-            box-shadow: 0 4px 15px rgba(233, 69, 96, 0.3);
-            animation: pulse 2s infinite;
-            overflow: hidden;
-        }
-
-        .avatar img {
-            width: 100%;
-            height: 100%;
-            object-fit: cover;
-        }
-
-        .user-info {
-            flex: 1;
-        }
-
-        .username {
-            font-weight: 700;
-            font-size: 18px;
+  <body>
+    <div id="content">
+      <p>Loading your dashboard...</p>
+    </div>
+  </body>
+</html>            font-size: 18px;
             margin-bottom: 4px;
             letter-spacing: 0.2px;
         }
